@@ -1,0 +1,1039 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Store API — LP RPG v11 (Stable)</title>
+<style>
+  :root{ --bg:#0c1216; --panel:#102028; --panel2:#132c35; --text:#e7fbff; --accent:#ffd20a; }
+
+  :root{ --scale:4; --pad:1; }
+  @media (max-width: 900px){ :root{ --scale:3; --pad:.9; } }
+  @media (max-width: 600px){ :root{ --scale:2.5; --pad:.85; } }
+
+  html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--text)}
+  .wrap{display:flex;align-items:center;justify-content:center;height:100%}
+  .frame{background: radial-gradient(120% 90% at 50% -10%, #142821, #0b1310 60%);
+         border:2px solid #1c2f27;border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.5), inset 0 2px 0 #ffffff12;padding:14px}
+  .screen{position:relative;min-width:320px;width:min(800px, 100vw - 24px);height:760px;background:#0b1418;overflow:hidden;border-radius:14px;box-shadow:inset 0 0 0 2px #000a, inset 0 0 60px #08120f}
+  .scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(180deg,#0001 0 2px,#0000 2px 4px);mix-blend-mode:multiply}
+  .bar{position:absolute;left:0;right:0;top:0;height:40px;background:var(--panel);border-bottom:1px solid #153943;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:13px;z-index:4}
+  .btn{padding:5px 10px;border:1px solid #5fb3a5;background:#0f1d18;color:#e9f5ef;border-radius:8px;cursor:pointer}
+  .badges{position:absolute;top:48px;right:10px;display:flex;gap:6px;z-index:3}
+  .badge{width:16px;height:16px;border:1px solid #6da692;background:#0e1f1a;border-radius:4px;box-shadow:0 1px 0 #000}
+  .b-elec{background:linear-gradient(#3aa0ff,#0047ab)} .b-groc{background:linear-gradient(#5bbd24,#2e7d0c)} .b-ap{background:linear-gradient(#ffb703,#9a6700)}
+  .toast{position:absolute;left:50%;transform:translateX(-50%);top:46px;background:#102028;border:1px solid #5fb3a5;border-radius:8px;padding:6px 10px;font-size:12px;z-index:7;display:none}
+  .toast.show{display:block;animation:pop 1.2s ease forwards}
+  @keyframes pop{0%{opacity:0;transform:translate(-50%,-6px)}20%{opacity:1;transform:translate(-50%,0)}80%{opacity:1}100%{opacity:0}}
+
+  .game{position:absolute;left:0;top:0;width:192px;height:172px;transform:scale(var(--scale));transform-origin:top left;image-rendering:pixelated}
+  .grid{display:grid;grid-template-columns:repeat(24,8px);grid-template-rows:repeat(22,8px)}
+  .t{width:8px;height:8px;position:relative}
+
+  /* Tiles */
+  .floor{background:#14302e}
+  .path{background:linear-gradient(#356b60,#224c44); box-shadow: inset 0 1px 0 #4e8a7d, inset 0 -1px 0 #183730; }
+  .wall{background:#0a1f19} .tree{background:#174f3e}
+  .water{background: radial-gradient(8px 8px at 4px 4px, #2a7bd1 40%, #164b85 60%), repeating-linear-gradient(0deg, #2a7bd155 0 2px, #2a7bd100 2px 4px); animation:ripple 1.6s linear infinite}
+  @keyframes ripple{0%{background-position:0 0,0 0}100%{background-position:0 0,0 4px}}
+  .shelf{background:linear-gradient(0deg,#79c5b3 0 1px,#3a7d6e 1px 2px,#79c5b3 2px 3px,#3a7d6e 3px 4px,#79c5b3 4px 5px,#3a7d6e 5px 6px,#79c5b3 6px 7px,#3a7d6e 7px 8px)}
+  .cooler{background:linear-gradient(#86c5ff,#4aa3ff)}
+  .register{
+      position:relative;
+      background:
+        linear-gradient(0deg, #2b2f33 0 2px, #3a4046 2px 4px, #2b2f33 4px 6px, #3a4046 6px 8px), /* conveyor belt */
+        linear-gradient(#6a7a86,#4c5a64); /* counter body */
+      box-shadow: inset 0 0 0 1px #0a0f12, inset 0 -2px 0 #2a333a;
+    }
+    .register::before{ /* screen */
+      content:"";
+      position:absolute; left:1px; top:1px; width:5px; height:3px;
+      background:linear-gradient(#aaf1ff, #5cc3ff);
+      box-shadow:0 0 3px #58d7ffaa, inset 0 0 0 1px #0e2630;
+      border-radius:1px;
+    }
+    .register::after{ /* scanner */
+      content:"";
+      position:absolute; right:1px; bottom:1px; width:3px; height:2px;
+      background:radial-gradient(circle at 1px 1px, #ff6b6b 0 1px, #4c0b0b 1px 2px);
+      box-shadow:0 0 3px #ff3b3baa;
+      border-radius:1px;
+    }
+  .tv{background:linear-gradient(#2e5ca8,#1a3770)}
+  .sign{background:#0b1e18; box-shadow: inset 0 0 0 1px #6bb1ff; }
+  .door{background:linear-gradient(#0b1e18,#0b1e18),linear-gradient(#294e40,#294e40);background-size:6px 6px,8px 2px;background-position:1px 2px,0 6px;background-repeat:no-repeat; box-shadow:0 0 6px 2px rgba(255,210,10,.25) inset; }
+  .pc{background: radial-gradient(6px 6px at 4px 4px, #20304f 60%, #182339 61%), #1c3a30; }
+  .npc{background:#6a9a84}
+  .front{background:linear-gradient(#284f4a,#1a3a36)}
+  .groc{background:linear-gradient(#2b6125,#204a1c)}
+  .elec{background:linear-gradient(#1e3a6f,#162a52)}
+  .pharm{background:linear-gradient(#1e5c74,#17485b)}
+  .break{background:linear-gradient(#3b2e1c,#2a2015)}
+  .ap{background:linear-gradient(#5a3f12,#3a2a0c); box-shadow:0 0 0 2px rgba(98,242,255,.6) inset, 0 0 10px 3px rgba(98,242,255,.35) inset; animation:apPulse 1.6s ease-in-out infinite}
+  @keyframes apPulse{0%{box-shadow:0 0 0 1px rgba(98,242,255,.7) inset, 0 0 6px 2px rgba(98,242,255,.25) inset}50%{box-shadow:0 0 0 2px rgba(255,210,10,.9) inset, 0 0 10px 4px rgba(255,210,10,.35) inset}100%{box-shadow:0 0 0 1px rgba(98,242,255,.7) inset, 0 0 6px 2px rgba(98,242,255,.25) inset}}
+
+  .item{background:linear-gradient(#193e36,#0e251f); position:relative}
+  .item::after{content:""; position:absolute; left:2px; top:2px; width:4px; height:4px; background:radial-gradient(circle at 2px 2px, #ffd20a 0 1px, #ffef9a 1px 2px, #d19b00 2px 4px); filter:drop-shadow(0 0 2px #ffd20a); animation: sparkle 1.2s linear infinite}
+  @keyframes sparkle{0%{transform:translateY(0)}50%{transform:translateY(-1px)}100%{transform:translateY(0)}}
+
+  /* Labels */
+  .label{position:absolute; left:-8px; top:-12px; width:max-content; background:rgba(16,32,40,.85); border:1px solid #5fb3a5; padding:1px 4px; font-size:7px; color:#e7fbff; border-radius:3px; pointer-events:none; z-index:2;}
+  .label.ghost{opacity:.25}
+  .sprite{position:absolute;left:0;top:0;width:8px;height:8px; z-index:3}
+
+  /* Sprites */
+  .sprite{position:absolute;left:-1px;top:-2px;width:10px;height:10px; z-index:3; image-rendering:pixelated;
+    filter: drop-shadow(0 1px 0 rgba(0,0,0,.45)) drop-shadow(0 -1px 0 rgba(0,0,0,.35)) drop-shadow(1px 0 0 rgba(0,0,0,.35)) drop-shadow(-1px 0 0 rgba(0,0,0,.35));
+  }
+  @keyframes idle-bob{0%{transform:translateY(0)}50%{transform:translateY(-1px)}100%{transform:translateY(0)}}
+  .sprite.idle{animation: idle-bob .8s steps(1,end) infinite}
+  /* Department badge dot */
+  .sprite::after{content:''; position:absolute; right:-1px; top:-1px; width:2px; height:2px; border-radius:1px; box-shadow:0 0 2px rgba(0,0,0,.4)}
+  .dept-Electronics::after{background:#3aa0ff}
+  .dept-Grocery::after{background:#5bbd24}
+  .dept-Front{}
+  .dept-Front::after{background:#ffd20a}
+  .dept-Pharmacy::after{background:#7dd3fc}
+  .dept-LP{}
+  .dept-LP::after{background:#62f2ff}
+  .dept-Salesfloor::after{background:#c0c7cf}
+  /* API Core (microchip with pins + glow) */
+  .spr-api{width:1px;height:1px;background:transparent;box-shadow:
+    3px 0px #a6ecff,4px 0px #a6ecff,5px 0px #a6ecff,
+    2px 1px #2979ff,3px 1px #0fb9ff,4px 1px #0fb9ff,5px 1px #0fb9ff,6px 1px #2979ff,
+    2px 2px #0fb9ff,3px 2px #a6ecff,4px 2px #a6ecff,5px 2px #a6ecff,6px 2px #0fb9ff,
+    2px 3px #0fb9ff,3px 3px #a6ecff,4px 3px #0fb9ff,5px 3px #a6ecff,6px 3px #0fb9ff,
+    2px 4px #2979ff,3px 4px #0fb9ff,4px 4px #0fb9ff,5px 4px #0fb9ff,6px 4px #2979ff,
+    3px 5px #0fb9ff,4px 5px #a6ecff,5px 5px #0fb9ff;
+    filter: drop-shadow(0 0 2px #3bd3ff);
+  }
+  /* Lifter base outline helper */
+  .spr-outline{box-shadow:
+    1px 0px #000a,7px 0px #000a, 0px 1px #000a,8px 1px #000a, 0px 5px #000a,8px 5px #000a, 1px 6px #000a,7px 6px #000a;
+  }
+  /* Casual Lifter: hoodie + bag */
+  .spr-lifter-casual{width:1px;height:1px;background:transparent;box-shadow:
+    3px 0px #dfe4e8,4px 0px #dfe4e8,
+    2px 1px #6b7280,3px 1px #6b7280,4px 1px #6b7280,5px 1px #6b7280,
+    2px 2px #6b7280,3px 2px #dfe4e8,4px 2px #dfe4e8,5px 2px #6b7280,
+    2px 3px #6b7280,3px 3px #6b7280,4px 3px #6b7280,5px 3px #6b7280,
+    1px 4px #374151,2px 4px #6b7280,5px 4px #374151,6px 4px #6b7280,
+    2px 5px #9ca3af,5px 5px #9ca3af;
+  }
+  /* Return Fraudster: cap + box */
+  .spr-lifter-return{width:1px;height:1px;background:transparent;box-shadow:
+    3px 0px #eaeaea,4px 0px #eaeaea,5px 0px #111827,
+    2px 1px #111827,3px 1px #0ea5e9,4px 1px #0ea5e9,5px 1px #0ea5e9,6px 1px #111827,
+    2px 2px #eaeaea,3px 2px #eaeaea,4px 2px #eab308,5px 2px #eab308,6px 2px #eaeaea,
+    2px 3px #0f172a,3px 3px #eab308,4px 3px #eab308,5px 3px #0f172a,
+    2px 4px #3f3f46,3px 4px #3f3f46,4px 4px #a16207,5px 4px #3f3f46,6px 4px #3f3f46,
+    3px 5px #a16207,4px 5px #a16207;
+  }
+  /* Organized Crew: vest + clipboard */
+  .spr-lifter-org{width:1px;height:1px;background:transparent;box-shadow:
+    3px 0px #f3f4f6,4px 0px #f3f4f6,
+    2px 1px #111827,3px 1px #22c55e,4px 1px #22c55e,5px 1px #22c55e,6px 1px #111827,
+    2px 2px #22c55e,3px 2px #f3f4f6,4px 2px #f3f4f6,5px 2px #22c55e,
+    2px 3px #16a34a,3px 3px #22c55e,4px 3px #22c55e,5px 3px #16a34a,
+    1px 4px #111827,2px 4px #374151,5px 4px #111827,6px 4px #374151,
+    1px 5px #9ca3af,6px 5px #9ca3af, 4px 5px #f59e0b; /* clipboard dot */
+  }
+
+  /* Battle UI */
+ */
+  .battle{ position:absolute; left:0; top:0; width:100%; height:100%; display:none; z-index:5; }
+  .b-panel{ position:absolute; left:12px; right:12px; bottom:54px; height:200px; background:var(--panel2); border:1px solid #1c4c5b; border-radius:10px; padding:8px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+@media (max-width: 600px){ .b-panel{ bottom:48px; height:188px; gap:6px; } .textbox{ height:40px; font-size:11px; padding:5px 8px; } }
+  .b-box{ background:var(--panel); border:1px solid #1c4c5b; border-radius:8px; padding:6px; font-size:12px; }
+  .hp{ height:8px; background:#193d2f; border:1px solid #0d241c; border-radius:6px; overflow:hidden; }
+  .hp>div{ height:100%; background:linear-gradient(#5de06a,#2a9d2f); width:100%; }
+  .name{ font-weight:600; margin-bottom:4px; display:flex; justify-content:space-between; }
+  .moves{ display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:6px; }
+  .move{ background:#0f1d18; border:1px solid #5fb3a5; border-radius:6px; padding:6px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
+  .tabs{ display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap; }
+  .tab{ padding:3px 8px; border:1px solid #5fb3a5; background:#0f1d18; border-radius:6px; cursor:pointer; font-size:12px; }
+  .tab.active{ background:#204a44; }
+  .items{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .party{ display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; }
+  .mate{ background:#0f1d18; border:1px solid #5fb3a5; border-radius:6px; padding:6px; cursor:pointer; font-size:12px; }
+  .mate.dead{ opacity:.5; pointer-events:none; }
+  .textbox{ position:absolute; left:0; right:0; bottom:0; height:44px; background:#163f3a; border-top:2px solid #5fb3a5; padding:6px 8px; font-size:12px; }
+
+  /* Overlay + controls */
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#0b1310f0;z-index:6}
+  .card{background:#0f1d18;border:1px solid #5fb3a5;border-radius:10px;padding:16px;text-align:center;width:70%}
+  .row{display:flex;gap:10px;justify-content:center}
+  .row button{min-width:120px}
+  .pad{position:absolute;bottom:calc(70px * var(--pad));left:calc(8px * var(--pad));width:calc(136px * var(--pad));height:calc(102px * var(--pad));display:none;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:calc(6px * var(--pad));opacity:.7;touch-action:none;z-index:3}
+  .pad.show{display:grid}
+  .k{background:#0e1f1a;border:1px solid #6da692;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#cfe6d9;font-size:calc(11px * var(--pad));user-select:none}
+  .ab{position:absolute;bottom:calc(80px * var(--pad));right:calc(14px * var(--pad));display:none;gap:calc(10px * var(--pad));z-index:3;opacity:.75}
+  .ab.show{display:flex}
+  .btnAB{width:calc(44px * var(--pad));height:calc(44px * var(--pad));border-radius:50%;background:#0e1f1a;border:2px solid #6da692;color:#cfe6d9;display:flex;align-items:center;justify-content:center;font-size:calc(13px * var(--pad));user-select:none}
+
+  /* PC Modal */
+  .modal{ position:absolute; inset:0; background:#0008; display:none; align-items:center; justify-content:center; z-index:8; }
+  .modal.show{ display:flex; }
+  .pcbox{ width:480px; background:#0e1f1a; border:2px solid #6da692; color:#cfe6d9; padding:10px; border-radius:10px; }
+  .pcgrid{ display:grid; grid-template-columns: repeat(6, 1fr); gap:6px; margin-top:6px; }
+  .slot{ height:26px; border:1px solid #6da692; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; background:#112620; border-radius:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="frame">
+    <div class="screen">
+      <div class="scan"></div>
+      <div class="bar">
+        <div>Store API — <strong>LP RPG v11</strong></div>
+        <div>
+          <span id="coinHud" style="margin-right:8px">¢ 0</span><button id="menuBtn" class="btn">Menu</button> <button id="ctrlBtn" class="btn">Controls: Auto</button> <button id="audioBtn" class="btn">Sound: Off</button>
+          <button id="saveBtn" class="btn">Save</button>
+        </div>
+      </div>
+      <div class="badges"><div id="bElec" class="badge"></div><div id="bGroc" class="badge"></div><div id="bAp" class="badge"></div></div>
+      <div id="toast" class="toast">Picked up an item!</div>
+
+      <div id="game" class="game"><div id="map" class="grid"></div></div>
+
+      <!-- Battle system -->
+      <div id="battle" class="battle">
+        <div class="b-panel">
+          <div class="b-box" id="youBox">
+            <div class="name"><span id="youName">API Core</span><span>Lv <span id="youLv">5</span></span></div>
+            <div class="hp"><div id="youHP"></div></div>
+            <div style="margin-top:6px" id="youStatus">Status: —</div>
+            <div class="tabs" style="margin-top:8px">
+              <div id="tabFight" class="tab active">Actions</div>
+              <div id="tabBag" class="tab">Toolkit</div>
+              <div id="tabRecruit" class="tab">Resolve</div>
+              <div id="tabParty" class="tab">Modules</div>
+              <div id="tabRun" class="tab">Disengage</div>
+            </div>
+            <div id="moves" class="moves"></div>
+            <div id="items" class="items" style="display:none"></div>
+            <div id="party" class="party" style="display:none"></div>
+          </div>
+          <div class="b-box" id="foeBox">
+            <div class="name"><span id="foeName">Casual Lifter</span><span>Lv <span id="foeLv">4</span></span></div>
+            <div class="hp"><div id="foeHP"></div></div>
+            <div style="margin-top:6px" id="foeStatus">Status: —</div>
+            <div class="centerText" style="margin-top:10px">Area: <span id="foeDept">Salesfloor</span></div>
+          </div>
+        </div>
+        <div class="textbox" id="textbox">A potential theft incident is occurring…</div>
+      </div>
+
+      <!-- D-Pad + A/B -->
+      <div class="pad" id="pad">
+        <div></div><div data-dir="up" class="k">▲</div><div></div>
+        <div data-dir="left" class="k">◀</div><div class="k" style="opacity:.25;pointer-events:none">•</div><div data-dir="right" class="k">▶</div>
+        <div></div><div data-dir="down" class="k">▼</div><div></div>
+      </div>
+      <div class="ab" id="ab"><div id="btnA" class="btnAB">A</div><div id="btnB" class="btnAB">B</div></div>
+
+      <!-- Start overlay -->
+      <div id="startOverlay" class="overlay">
+        <div class="card">
+          <h3 style="margin:0 0 8px 0;">Press Start</h3>
+          <p style="margin:0 0 12px 0;">Tap Start to focus controls (Safari/Chrome/Canva). Toggle audio anytime.</p>
+          <div class="row">
+            <button id="startBtn" class="btn">Start</button>
+            <button id="helpBtn" class="btn">Controls</button>
+          </div>
+        </div>
+      </div>
+    
+<!-- Start/Menu Modal -->
+<div id="menuModal" class="modal">
+  <div class="pcbox">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>Start Menu</div>
+      <button id="menuClose" class="btn" style="position:static">Close</button>
+    </div>
+    <div style="margin-top:6px;"><strong>Inventory (Out of Battle)</strong></div>
+    <div id="menuInv" class="pcgrid"></div>
+    <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
+      <div><strong>Coins:</strong> <span id="menuCoins">0</span></div>
+      <div style="font-size:12px;opacity:.8">Use <em>Battery Pack</em> (heal) or <em>Energy Drink</em> (restore PP). Others require an incident.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Shop Modal -->
+<div id="shopModal" class="modal">
+  <div class="pcbox">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>Front End Register — Shop</div>
+      <button id="shopClose" class="btn" style="position:static">Close</button>
+    </div>
+    <div><strong>Items for Sale</strong></div>
+    <div id="shopList" class="pcgrid"></div>
+    <div style="margin-top:8px;"><strong>Your Coins:</strong> <span id="shopCoins">0</span></div>
+  </div>
+</div>
+
+</div>
+  </div>
+</div>
+
+<!-- Module Manager (PC Modal) -->
+<div id="pcModal" class="modal">
+  <div class="pcbox">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>Module Manager</div>
+      <button id="pcClose" class="btn" style="position:static">Close</button>
+    </div>
+    <div><strong>Active Modules</strong> (max 6)</div>
+    <div id="pcParty" class="pcgrid"></div>
+    <div style="margin-top:6px;"><strong>Available Modules</strong></div>
+    <div id="pcStorage" class="pcgrid"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const mapEl=$('map'), battleEl=$('battle'), toast=$('toast');
+  const pad=$('pad'), btnA=$('btnA'), btnB=$('btnB');
+  const startOverlay=$('startOverlay'), startBtn=$('startBtn'), helpBtn=$('helpBtn');
+  const saveBtn=$('saveBtn'), audioBtn=$('audioBtn');
+  const ctrlBtn=$('ctrlBtn');
+  let controlsMode = localStorage.getItem('store_api_controls_mode') || 'auto'; // 'auto','show','hide'
+  function applyControlsVisibility(){
+    const hasTouch = (('ontouchstart' in window) || (navigator.maxTouchPoints>0));
+    const show = (controlsMode==='show') || (controlsMode==='auto' && hasTouch);
+    const padEl=$('pad'), abEl=$('ab');
+    if(padEl) padEl.classList.toggle('show', show && battleEl.style.display!=='block');
+    if(abEl) abEl.classList.toggle('show', show && battleEl.style.display!=='block');
+    if(ctrlBtn) ctrlBtn.textContent = 'Controls: ' + (controlsMode==='auto' ? 'Auto' : (controlsMode==='show'?'On':'Off'));
+  }
+  ctrlBtn.onclick = ()=>{
+    controlsMode = controlsMode==='auto' ? 'show' : (controlsMode==='show' ? 'hide' : 'auto');
+    localStorage.setItem('store_api_controls_mode', controlsMode);
+    applyControlsVisibility();
+  };
+  // On narrow screens, show controls immediately in Auto mode
+  if(controlsMode==='auto' && window.matchMedia && window.matchMedia('(max-width: 600px)').matches){ const padEl=$('pad'), abEl=$('ab'); if(padEl) padEl.classList.add('show'); if(abEl) abEl.classList.add('show'); }
+
+  // Reveal controls on first touch in auto mode
+  let touched=false;
+  window.addEventListener('touchstart', ()=>{ if(!touched && controlsMode==='auto'){ touched=true; $('pad').classList.add('show'); $('ab').classList.add('show'); }}, {passive:true});
+
+  const bElec=$('bElec'), bGroc=$('bGroc'), bAp=$('bAp');
+  const youName=$('youName'), youLv=$('youLv'), youHP=$('youHP'), youStatus=$('youStatus');
+  const foeName=$('foeName'), foeLv=$('foeLv'), foeHP=$('foeHP'), foeStatus=$('foeStatus'), foeDept=$('foeDept');
+  const tabFight=$('tabFight'), tabBag=$('tabBag'), tabRecruit=$('tabRecruit'), tabRun=$('tabRun'), tabParty=$('tabParty');
+  const movesEl=$('moves'), itemsEl=$('items'), partyEl=$('party'); const ui=$('textbox');
+
+  const pcModal=$('pcModal'), pcParty=$('pcParty'), pcStorage=$('pcStorage'), pcClose=$('pcClose');
+  // Coins HUD
+  function updateCoinsHUD(){
+    const hud=$('coinHud'); if(hud) hud.textContent='¢ '+(player.coins||0);
+    const sm=$('shopCoins'); if(sm) sm.textContent=(player.coins||0);
+    const mm=$('menuCoins'); if(mm) mm.textContent=(player.coins||0);
+  }
+
+
+  // Audio
+  const SFX={enabled:false, ctx:null,
+    init(){ if(this.ctx) return; try{ this.ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} },
+    play(f=440,d=.08,type='square',v=.05){ if(!this.enabled||!this.ctx) return; const t0=this.ctx.currentTime+.01; const o=this.ctx.createOscillator(); const g=this.ctx.createGain(); o.type=type; o.frequency.value=f; g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(v,t0+.01); g.gain.exponentialRampToValueAtTime(0.0001,t0+d); o.connect(g).connect(this.ctx.destination); o.start(t0); o.stop(t0+d+.02); },
+    step(){ this.play(800,.03,'triangle',.05); }, hit(){ this.play(520,.08,'square',.07); }, miss(){ this.play(220,.08,'sine',.06); }, heal(){ this.play(620,.1,'triangle',.08); }, badge(){ [392,523,659].forEach((f,i)=> setTimeout(()=>this.play(f,.09,'triangle',.08), i*120)); }, pickup(){ this.play(880,.08,'triangle',.08); }
+  };
+  function setAudio(on){ SFX.enabled=!!on; audioBtn.textContent='Sound: ' + (on?'On':'Off'); if(on){ SFX.init(); if(SFX.ctx && SFX.ctx.state==='suspended') SFX.ctx.resume(); } localStorage.setItem('store_api_v11_audio', on?'1':'0'); }
+  audioBtn.onclick=()=> setAudio(!SFX.enabled);
+
+  // World
+  const GB={W:24,H:22};
+  const T={ floor:0, path:1, wall:2, grass:3, water:4, shelf:5, cooler:6, register:7, tv:8, sign:9, door:10, pc:11, npc:12,
+            front:13, groc:14, elec:15, pharm:16, break:17, ap:18, item:19 };
+  const cls=['floor','path','wall','tree','water','shelf','cooler','register','tv','sign','door','pc','npc','front','groc','elec','pharm','break','ap','item'];
+  const world=[], labels=[];
+
+  function label(r,c,text){ labels.push({r,c,text}); }
+  function fill(r,c,h,w,t){ for(let y=r;y<r+h;y++) for(let x=c;x<c+w;x++) world[y][x]=t; }
+  function carve(){
+    for(let r=0;r<GB.H;r++){ const row=[]; for(let c=0;c<GB.W;c++){ row.push((r===0||c===0||r===GB.H-1||c===GB.W-1)?T.wall:T.floor); } world.push(row); }
+    for(let c=2;c<GB.W-2;c++){ world[10][c]=T.path; } for(let r=2;r<GB.H-2;r++){ world[r][12]=T.path; }
+    fill(2,2,10,8,T.front); fill(2,13,10,8,T.elec); fill(11,2,10,8,T.groc); fill(11,13,6,8,T.pharm); fill(17,13,4,8,T.break);
+    world[12][4]=T.ap; world[13][4]=T.pc;
+    for(let c=3;c<9;c+=2){ world[5][c]=T.register; }
+    label(5,4,'Registers');
+    world[7][4]=T.sign; label(7,4,'Front End');
+    for(let r=4;r<=8;r+=2) for(let c=15;c<=19;c+=2) world[r][c]=T.tv;
+    world[4][14]=T.sign; label(4,14,'Electronics');
+    for(let r=13;r<=17;r+=2) for(let c=4;c<=9;c+=2) world[r][c]=T.shelf;
+    for(let c=6;c<=8;c+=2) world[12][c]=T.grass;
+    for(let c=8;c<=10;c+=2) world[17][c]=T.cooler;
+    world[12][8]=T.sign; label(12,8,'Grocery');
+    world[13][16]=T.sign; label(13,16,'Pharmacy');
+    world[18][16]=T.sign; label(18,16,'Breakroom');
+    label(12,4,'AP Office');
+    world[3][18]=T.door; world[15][6]=T.door;
+    // Item pickups
+    world[6][6]=T.item; world[14][5]=T.item; world[6][17]=T.item; world[8][18]=T.item; world[16][10]=T.item;
+  }
+  carve();
+
+  // Visible NPCs (shoplifters)
+  const wildNPCs=[
+    {r:6,c:15,dept:'Electronics',type:'Casual Lifter'},
+    {r:14,c:8,dept:'Grocery',type:'Return Fraudster'},
+    {r:7,c:5,dept:'Front End',type:'Casual Lifter'},
+    {r:13,c:17,dept:'Pharmacy',type:'Organized Crew'},
+    {r:4,c:16,dept:'Electronics',type:'Organized Crew'},
+    {r:16,c:5,dept:'Grocery',type:'Casual Lifter'}
+  ];
+
+  // Modules & actions
+  function defaultMovesFor(role){
+    if(role==='API Core') return ['Scan Receipt','De-escalate','Flag Anomaly','Audit Burst'];
+    if(role==='Vision Module') return ['Flag Anomaly','Frame Review','De-escalate','Audit Burst'];
+    if(role==='POS Module') return ['Scan Receipt','Void Check','Price Verify','De-escalate'];
+    if(role==='RFID Module') return ['Tag Sweep','Flag Anomaly','Audit Burst','De-escalate'];
+    if(role==='Audit Module') return ['Pattern Match','Audit Burst','Flag Anomaly','De-escalate'];
+    return ['Scan Receipt','De-escalate','Flag Anomaly','Audit Burst'];
+  }
+  const MOVESET={
+    'Scan Receipt': { pow:22, acc:.96, pp:25, kind:'normal', msg:'Receipt scanned.' },
+    'Flag Anomaly': { pow:12, acc:1.0, pp:30, kind:'debuff', debuff:'def', msg:'Suspicion flagged. DEF down.' },
+    'Audit Burst': { pow:34, acc:.8, pp:10, kind:'power', msg:'Comprehensive audit burst!' },
+    'De-escalate': { heal:22, acc:1.0, pp:12, kind:'support', msg:'Tension drops. You feel steadier.' },
+    'Frame Review': { acc:1.0, pp:10, kind:'buff', buff:'atk', msg:'Context improves. ATK up.' },
+    'Void Check': { acc:.9, pp:8, kind:'status', status:'Confused', msg:'They’re confused by the policy.' },
+    'Price Verify': { pow:20, acc:.98, pp:20, kind:'normal', msg:'Price verified.' },
+    'Tag Sweep': { pow:28, acc:.9, pp:12, kind:'power', msg:'RFID sweep executed.' },
+    'Pattern Match': { acc:1.0, pp:10, kind:'buff', buff:'spd', msg:'Pattern cache warmed. SPD up.' }
+  };
+  function makeMon(role, lv, dept='Salesfloor'){
+    return { name:role, role, lv, dept, hpMax:40+lv*6+(role.includes('Module')?6:10), hp:0, atk:10+lv*2, def:8+lv*2, spd:8+lv*2, xp:0,
+      status:null, statusTurns:0,
+      moves: defaultMovesFor(role).map(n=> ({ name:n, pp: MOVESET[n].pp })) };
+  }
+  // Enemy generator
+  function makeShoplifter(kind, lv, area){
+    const m={ name:kind, role:kind, lv, dept:area, hpMax:40+lv*6, hp:0, atk:10+lv*2, def:8+lv*2, spd:8+lv*2, xp:0,
+      status:null, statusTurns:0,
+      moves: [{name:'Distract',pp:20},{name:'Route Change',pp:20},{name:'Abandon Cart',pp:15},{name:'Exit Attempt',pp:10}] };
+    m.hp=m.hpMax; return m;
+  }
+
+  const player={ r:11,c:12,
+    party:[], storage:[],
+    items:{ 'Resolve Kit':3, 'Battery Pack':2, 'Policy Notice':2 },
+    badges:{elec:false,groc:false,ap:false} };
+
+  function ensureStarter(){
+    if(player.party.length===0){
+      const core=makeMon('API Core',5,'Front End'); core.hp=core.hpMax;
+      const vision=makeMon('Vision Module',4,'Electronics'); vision.hp=vision.hpMax;
+      player.party.push(core, vision);
+      player.storage.push(makeMon('POS Module',4,'Front End'), makeMon('RFID Module',4,'Electronics'), makeMon('Audit Module',4,'AP Office'));
+    }
+  }
+  function save(){ localStorage.setItem('store_api_v11', JSON.stringify(player)); }
+  function load(){ const raw=localStorage.getItem('store_api_v11'); if(!raw) return; try{ Object.assign(player, JSON.parse(raw)); }catch{} }
+
+  // Map render
+  function drawMap(){
+    mapEl.innerHTML=''; mapEl.className='grid';
+    for(let r=0;r<GB.H;r++){ for(let c=0;c<GB.W;c++){ const d=document.createElement('div'); d.className='t '+cls[world[r][c]]; mapEl.appendChild(d); } }
+    labels.forEach(L=>{ const idx=L.r*GB.W+L.c, tile=mapEl.children[idx]; const tag=document.createElement('div'); tag.className='label'; let text=L.text; if(L.text==='AP Office') text='AP Office'; if(L.text==='PC') text='Module Manager'; tile.appendChild(tag); tag.textContent=text; });
+    placeSprites();
+  }
+  function spriteFor(roleOrType){
+    if(roleOrType==='API Core' || (roleOrType && roleOrType.includes && roleOrType.includes('Module'))) return 'spr-api';
+    if(roleOrType && roleOrType.indexOf && roleOrType.indexOf('Return')>=0) return 'spr-lifter-return';
+    if(roleOrType && roleOrType.indexOf && roleOrType.indexOf('Organized')>=0) return 'spr-lifter-org';
+    return 'spr-lifter-casual';
+  }
+  
+  function moduleType(role){
+    if(role.indexOf('Vision')>=0) return 'Vision';
+    if(role.indexOf('POS')>=0) return 'POS';
+    if(role.indexOf('RFID')>=0) return 'RFID';
+    if(role.indexOf('Audit')>=0) return 'Audit';
+    if(role.indexOf('API Core')>=0) return 'Core';
+    return 'Core';
+  }
+  function lifterType(kind){
+    if(kind.indexOf('Return')>=0) return 'Return';
+    if(kind.indexOf('Organized')>=0) return 'Organized';
+    return 'Casual';
+  }
+  const EFFECT = {
+    'Vision':     { Casual: 1.0, Return: 0.75, Organized: 1.5 },
+    'POS':        { Casual: 0.75, Return: 1.5, Organized: 1.0 },
+    'RFID':       { Casual: 1.0, Return: 0.75, Organized: 1.5 },
+    'Audit':      { Casual: 1.5, Return: 1.0, Organized: 0.75 },
+    'Core':       { Casual: 1.0, Return: 1.0, Organized: 1.0 }
+  };
+  function effectivenessMult(attackerRole, defenderKind){
+    const m = moduleType(attackerRole);
+    const t = lifterType(defenderKind);
+    return (EFFECT[m] && EFFECT[m][t]) ? EFFECT[m][t] : 1.0;
+  }
+
+  
+  function adjustLabels(){
+    const labs = document.querySelectorAll('.label');
+    labs.forEach(el=>{
+      const r = parseInt(el.dataset.r,10), c = parseInt(el.dataset.c,10);
+      if(r===player.r && c===player.c){ el.classList.add('ghost'); }
+      else { el.classList.remove('ghost'); }
+    });
+  }
+
+  function placeSprites(){
+    for(const t of mapEl.children){ const s=t.querySelectorAll('.sprite'); s.forEach(x=>x.remove()); t.classList.remove('player'); }
+    // Player
+    const idx=player.r*GB.W+player.c, tile=mapEl.children[idx]; tile.classList.add('player'); const p=document.createElement('div'); p.className='sprite idle '+spriteFor('API Core'); tile.appendChild(p);
+    // Static incident NPCs
+    wildNPCs.forEach(n=>{ const i=n.r*GB.W+n.c; const t=mapEl.children[i]; const s=document.createElement('div'); s.className='sprite idle '+spriteFor(n.type||'Casual Lifter') + ' dept-' + (n.dept||'Salesfloor'); t.appendChild(s); });
+    renderBadges(); adjustLabels();
+  }
+  function renderBadges(){ bElec.style.opacity = player.badges.elec ? 1 : 0.25; bGroc.style.opacity = player.badges.groc ? 1 : 0.25; bAp.style.opacity = player.badges.ap ? 1 : 0.25;
+    bElec.classList.toggle('b-elec', player.badges.elec); bGroc.classList.toggle('b-groc', player.badges.groc); bAp.classList.toggle('b-ap', player.badges.ap); }
+
+  function collide(r,c){ const v=world[r][c]; return [T.wall,T.water,T.shelf,T.cooler,T.register,T.tv,T.sign].includes(v); }
+  function tileToDept(t){ return t===T.front?'Front End':t===T.groc?'Grocery':t===T.elec?'Electronics':t===T.pharm?'Pharmacy':'Salesfloor'; }
+  
+  let lastDir = 'down';
+  function isRegisterNearby(){
+    const rc = [[-1,0],[1,0],[0,-1],[0,1]];
+    for(const [dr,dc] of rc){
+      const r = player.r+dr, c = player.c+dc;
+      if(r>=0 && c>=0 && r<GB.H && c<GB.W){
+        if(world[r][c]===T.register) return true;
+      }
+    }
+    return false;
+  }
+
+  function tryMove(dr,dc){
+    const nr=Math.max(1,Math.min(GB.H-2, player.r+dr));
+    const nc=Math.max(1,Math.min(GB.W-2, player.c+dc));
+    if(collide(nr,nc)) return;
+    player.r=nr; player.c=nc; placeSprites(); adjustLabels(); SFX.step();
+    // Items
+    if(world[nr][nc]===T.item) pickup(nr,nc);
+    // Step onto visible NPC = incident
+    const hit=wildNPCs.find(n=> n.r===nr && n.c===nc );
+    if(hit){ startIncident(hit.type, tileToDept(world[nr][nc])); }
+    else {
+      // Area randoms
+      const tile=world[nr][nc]; if([T.front,T.groc,T.elec,T.pharm].includes(tile) && Math.random()<0.10) startIncident(randomKind(), tileToDept(tile));
+    }
+  }
+
+  function pickup(r,c){
+    let got=null; let coins=0;
+    if(r===6&&c===6) got='Battery Pack';
+    else if(r===14&&c===5) got='Policy Notice';
+    else if(r===6&&c===17) got='Resolve Kit';
+    else if(r===8&&c===18) coins=25;
+    else if(r===16&&c===10) coins=25;
+    if(got){ player.items[got]=(player.items[got]||0)+1; toast.textContent="Picked up " + got + "!"; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),1200); SFX.pickup(); save(); }
+    else if(coins>0){ player.coins=(player.coins||0)+coins; updateCoinsHUD(); toast.textContent=`Found ¢${coins}!`; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),1200); SFX.pickup(); save(); }
+    world[r][c]=T.floor; const idx=r*GB.W+c, tile=mapEl.children[idx]; tile.className='t '+cls[world[r][c]];
+  }
+
+  // Incidents (battles)
+  let you=null, foe=null, turn='you', activeIndex=0, forceSwitch=false;
+  function randomKind(){ return ['Casual Lifter','Return Fraudster','Organized Crew'][Math.floor(Math.random()*3)]; }
+  
+  
+  
+  function quip(kind, phase, area){
+    // Base lines by type (pre/post)
+    const baseType = {
+      pre: {
+        'Casual Lifter': [
+          "Oh, these? I thought the price was 'free ninety-nine.'",
+          "I’m just testing gravity… with this cart.",
+          "Receipt? I barely know her.",
+          "I’m speed-running checkout: any%",
+          "Is ‘beep’ optional? Asking for a friend."
+        ],
+        'Return Fraudster': [
+          "Trust me, this toaster was always a watermelon.",
+          "I have a receipt—in my heart.",
+          "It’s not ‘fraud,’ it’s ‘creative accounting.’",
+          "I declare this ‘open-box art’.",
+          "The return policy and I are in an open relationship."
+        ],
+        'Organized Crew': [
+          "We scheduled this on the shared calendar.",
+          "We operate on a strict ‘bring-your-own-bags’ policy.",
+          "We prefer the term ‘logistics startup.’",
+          "This is a team-building exercise.",
+          "We’ve got OKRs: Obtain, Keep, Retreat."
+        ]
+      },
+      post: {
+        'Casual Lifter': [
+          "Fine, I’ll ‘unlift’ it.",
+          "Okay okay—I’ll pay. Do you take vibes?",
+          "Turns out price scanners are undefeated.",
+          "Cart now contains humility.",
+          "I’ll scan my conscience next time."
+        ],
+        'Return Fraudster': [
+          "Wow, policy actually *is* a policy.",
+          "I’ll return… with legitimate returns next time.",
+          "You got me—SKU’d and tattooed.",
+          "I respect the barcode now.",
+          "Formally withdrawing my watermelon toaster."
+        ],
+        'Organized Crew': [
+          "Team, debrief on the group chat.",
+          "Retreat! Our KPI is ‘Keep Products Inside’.",
+          "We’ll circle back after reading the handbook.",
+          "Standup tomorrow: lessons learned.",
+          "Our sprint just got… blocked."
+        ]
+      }
+    };
+    // Dept riffs (pre/post)
+    const baseDept = {
+      pre: {
+        'Electronics': [
+          "These headphones are just… demoing in my backpack.",
+          "4K resolution, 0K receipt.",
+          "If it beeps, it’s mine now—right?",
+          "I speak fluent HDMI.",
+          "Bluetooth connected, ethics disconnected."
+        ],
+        'Grocery': [
+          "I thought samples were ‘all you can carry’.",
+          "Cart says ‘organic’, total says ‘zero’.",
+          "Bananas are basically free potassium.",
+          "This is a speed-snack situation.",
+          "Avocados picked me."
+        ],
+        'Pharmacy': [
+          "I’m just here for vibes and vitamins.",
+          "Is ‘buy none, get one’ a thing?",
+          "Consider this a prescription for discounts.",
+          "Reading the side effects: ‘may incur payment’.",
+          "Multivitamin? Multi-value."
+        ],
+        'Front End': [
+          "Self-checkout? More like self-check-*outta here*.",
+          "I scanned… my conscience. It declined.",
+          "Blink and you’ll miss my subtotal.",
+          "Price check on aisle: me.",
+          "I’m in the express lane of denial."
+        ],
+        'AP Office': [
+          "Uh oh, the Room of Accountability.",
+          "Okay fine, let’s talk policies and feelings.",
+          "Is this where the forms live?",
+          "I brought my best explanations.",
+          "I’d like to unsubscribe from consequences."
+        ],
+        'Salesfloor': [
+          "Browsing with intent… to not purchase.",
+          "Just comparing prices—with my wallet closed.",
+          "Window shopping without the windows.",
+          "Cart? Optional. Commitment? Also optional.",
+          "Taking a scenic route past the exits."
+        ]
+      },
+      post: {
+        'Electronics': [
+          "Fine, I’ll return the *wireless* guilt.",
+          "I’ll pay. Keep the demo mode on for me.",
+          "Okay, okay—1 HDMI to humility.",
+          "Beep redeemed. Lesson learned.",
+          "Audio: balanced. Morals: rebalanced."
+        ],
+        'Grocery': [
+          "Returning these vibes to aisle five.",
+          "I’ll pay for the avocado… even if it’s moody.",
+          "You win. Cart to checkout, not exit.",
+          "Snack run downgraded to walk of honesty.",
+          "Banana budget reinstated."
+        ],
+        'Pharmacy': [
+          "Guess honesty *is* over-the-counter.",
+          "I’ll refill my integrity instead.",
+          "Side effect: compliance.",
+          "Consulted my conscience—approved.",
+          "Dosage: one payment, taken now."
+        ],
+        'Front End': [
+          "Self-check-in to self-checkout, got it.",
+          "Putting the ‘pay’ back in ‘pay later’.",
+          "Fine, I’ll press the real Total.",
+          "Subtotal found. Courage applied.",
+          "Blink and you’ll miss me… paying."
+        ],
+        'AP Office': [
+          "Forms signed. Ego voided.",
+          "We talked. I learned. I’m leaving—with nothing.",
+          "Mark it resolved. I’m out.",
+          "Policy acknowledged, pride returned.",
+          "Consider me briefed and de-briefed."
+        ],
+        'Salesfloor': [
+          "Okay okay—window shopping resumes.",
+          "I’ll take my feet to checkout.",
+          "Respectfully retreating to the registers.",
+          "Scenic route now includes a receipt.",
+          "Adding ‘paid’ to my itinerary."
+        ]
+      }
+    };
+
+    const variantsA = [
+      "", "", "", " (allegedly)", " — probably", " (don’t @ me)",
+      " …in theory", " for science", " tbh", " respectfully", " kinda", " low-key"
+    ];
+    const variantsB = [
+      "", "", " 🧾", " 🔔", " 📦", " 🛒", " 🧠", " 💳", " 📋", " ⚡", " 🎯", " 🕵️"
+    ];
+    const connectors = [" ", " — ", " … ", " :: ", " | "];
+    const pick = (arr)=>arr[Math.floor(Math.random()*arr.length)];
+
+    // Build and cache 99 unique lines per (kind,phase,area)
+    if(!window.__quip99Cache) window.__quip99Cache = {};
+    const key = `${kind}|${phase}|${area}`;
+    if(!window.__quip99Cache[key]){
+      const typeArr = (baseType[phase][kind] || ["…"]);
+      const deptArr = (baseDept[phase][area] || ["…"]);
+      const set = new Set();
+      let i=0;
+      while(set.size < 99 && i < 5000){
+        const t = typeArr[i % typeArr.length];
+        const d = deptArr[(i*3) % deptArr.length];
+        const conn = connectors[(i*5) % connectors.length];
+        const a = variantsA[(i*7) % variantsA.length];
+        const b = variantsB[(i*11) % variantsB.length];
+        const line = `${t}${a}${conn}${d}${b}`.replace(/\s+/g,' ').trim();
+        set.add(line);
+        i++;
+      }
+      window.__quip99Cache[key] = Array.from(set).slice(0,99);
+    }
+    const pool = window.__quip99Cache[key];
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+
+
+
+  function startIncident(kind, area, isBoss=false){
+    if(player.party.length===0){ ensureStarter(); }
+    activeIndex=Math.min(activeIndex, player.party.length-1);
+    if(player.party[activeIndex].hp<=0){ const idx=player.party.findIndex(m=>m.hp>0); activeIndex=idx>=0?idx:0; }
+    you=player.party[activeIndex]; const baseLv = you.lv||5; const delta = Math.floor(Math.random()*3)-1; const foeLv = Math.max(1, baseLv + delta + (isBoss? (2+Math.floor(Math.random()*3)) : 0)); foe=makeShoplifter(kind, foeLv, area); if(!you.hp) you.hp=you.hpMax;
+    updateBattleUI(); buildMoves(); buildItems(); buildParty();
+    let intro = "";
+    if(isBoss){
+      if(area==='Electronics'){ intro = "⚡ Boss Incident: The TV wall flashes like a warning sign."; }
+      else if(area==='Grocery'){ intro = "🛒 Boss Incident: A cart stacked with ‘returns’ rolls up."; }
+      else if(area==='AP Office'){ intro = "🛡️ Final Incident: Policy binders thud onto the desk."; }
+      else { intro = "🚨 Major Incident detected."; }
+    }
+    showBattle(true); say((intro? intro + ' ' : '') + `Incident: ${foe.name} in ${area}. ${quip(foe.name,'pre', area)}`);
+    turn = you.spd >= foe.spd ? 'you' : 'foe'; if(turn==='foe') setTimeout(foeMove,700);
+  }
+
+  function updateBattleUI(){ youName.textContent=you.name; youLv.textContent=you.lv; youStatus.textContent='Status: '+(you.status||'—'); foeName.textContent=foe.name; foeLv.textContent=foe.lv; foeStatus.textContent='Status: '+(foe.status||'—'); foeDept.textContent=foe.dept||'Salesfloor'; updateHP(); }
+  function updateHP(){ youHP.style.width=(you.hp/you.hpMax*100)+'%'; foeHP.style.width=(foe.hp/foe.hpMax*100)+'%'; }
+  function showBattle(on){ battleEl.style.display=on?'block':'none'; applyControlsVisibility(); }
+  function say(t){ ui.textContent=t; }
+
+  function buildMoves(){
+    movesEl.innerHTML=''; itemsEl.innerHTML=''; partyEl.innerHTML=''; tabFight.classList.add('active'); tabBag.classList.remove('active'); tabParty.classList.remove('active');
+    you.moves.forEach((m,idx)=>{ const spec=MOVESET[m.name]; const div=document.createElement('div'); div.className='move'; div.innerHTML=`<span>${m.name}</span><span>PP ${m.pp}/${spec.pp}</span>`; div.onclick=()=> doMove(idx); movesEl.appendChild(div); });
+    const entries=[['Battery Pack','Restore 25 HP'],['Policy Notice','Lower DEF'],['Resolve Kit','Attempt to resolve']];
+    entries.forEach(([id,desc])=>{ const count=player.items[id]||0; const d=document.createElement('div'); d.className='move'; d.innerHTML=`<span>${id} (${count})</span><span>${desc}</span>`; d.onclick=()=> useItem(id); itemsEl.appendChild(d); });
+  }
+  function buildItems(){ /* included above */ }
+  function buildParty(){ partyEl.innerHTML=''; player.party.forEach((m,i)=>{ const d=document.createElement('div'); d.className='mate'+(m.hp<=0?' dead':''); d.innerHTML=`<div><strong>${i===activeIndex?'▶ ':''}${m.name}</strong> Lv${m.lv}</div><div>HP ${m.hp||0}/${m.hpMax}</div>`; d.onclick=()=> switchTo(i); partyEl.appendChild(d); }); }
+
+  tabFight.onclick=()=>{ movesEl.style.display='grid'; itemsEl.style.display='none'; partyEl.style.display='none'; };
+  tabBag.onclick=()=>{ itemsEl.style.display='grid'; movesEl.style.display='none'; partyEl.style.display='none'; };
+  tabParty.onclick=()=>{ partyEl.style.display='grid'; movesEl.style.display='none'; itemsEl.style.display='none'; };
+  tabRecruit.onclick=bringToAP;
+  tabRun.onclick=()=> showBattle(false);
+
+  function applyStatus(target,type,turns=3){ target.status=type; target.statusTurns=turns; if(target===you) youStatus.textContent='Status: '+type; else foeStatus.textContent='Status: '+type; }
+  function tickStatus(target){ if(!target.status) return; target.statusTurns--; if(target.statusTurns<=0){ target.status=null; if(target===you) youStatus.textContent='Status: —'; else foeStatus.textContent='Status: —'; } }
+
+  function doMove(i){
+    if(turn!=='you'||forceSwitch) return;
+    const m=you.moves[i], spec=MOVESET[m.name];
+    if(m.pp<=0){ say(`No PP left for ${m.name}.`); return; }
+    m.pp--;
+    let msg=`${you.name} executed ${m.name}. `;
+    if(Math.random()> (spec.acc||1)){ say(msg+'No effect.'); SFX.miss(); turn='foe'; return setTimeout(foeMove,700); }
+    if(spec.heal){ const heal=Math.min(spec.heal,you.hpMax-you.hp); you.hp+=heal; SFX.heal(); say(msg+(spec.msg||`Recovered ${heal} HP.`)); }
+    else if(spec.kind==='debuff'){ foe.def=Math.max(1,(foe.def||18)-2); SFX.hit(); say(spec.msg||'Their guard is lowered.'); }
+    else if(spec.kind==='buff'){ if(spec.buff==='atk') you.atk+=2; if(spec.buff==='spd') you.spd+=2; say(spec.msg||'Module efficiency improved.'); }
+    else if(spec.kind==='status'){ applyStatus(foe,'Confused',3); say(spec.msg||'They look uncertain.'); }
+    else{ const crit=Math.random()<0.1; const atk=you.atk*(you.status==='Confused'?0.8:1); let base=(spec.pow||18)+atk*0.6+(crit?6:0); const dmg=Math.max(1,Math.round(base-(foe.def||18)*0.35)); foe.hp=Math.max(0,foe.hp-dmg); SFX.hit(); say((crit?'Critical insight! ':'')+`Impact ${dmg}.`); }
+    updateHP(); if(foe.hp<=0) return resolveIncident('The situation de-escalated.');
+    tickStatus(you); turn='foe'; setTimeout(foeMove,700);
+  }
+  function foeMove(){
+    const names=foe.moves.map(m=>m.name); const name=names[Math.floor(Math.random()*names.length)]; const spec={pow:18,acc:.95};
+    let msg=`${foe.name} used ${name}. `;
+    if(Math.random()> (spec.acc||1)){ say(msg+'It failed.'); SFX.miss(); turn='you'; return; }
+    const dmg=Math.max(1,Math.round((spec.pow+(foe.atk||20)*0.6)-(you.def||18)*0.35)); you.hp=Math.max(0,you.hp-dmg); updateHP(); say(msg+`Pressure +${dmg}.`);
+    if(you.hp<=0){ say(`API module overloaded!`); const idx=player.party.findIndex(m=>m.hp>0); if(idx>-1){ activeIndex=idx; you=player.party[idx]; say(`Switched to ${you.name}.`); updateBattleUI(); } else { setTimeout(()=>showBattle(false),800); return; } }
+    tickStatus(foe); turn='you';
+  }
+  function resolveIncident(extra=''){
+    // Dynamic XP scaled by opponent level and level difference
+    const base = 10 + foe.lv * 5; // stronger opponents give more
+    const diff = Math.max(-5, Math.min(5, foe.lv - you.lv)); // clamp level diff
+    const mult = diff >= 0 ? (1 + diff * 0.25) : (1 + diff * 0.10); // bonus if higher, small reduction if lower
+    const xp = Math.max(5, Math.round(base * mult));
+
+    say(`Incident resolved. ${extra} (+${xp} XP) ${quip(foe.name,'post', foe.dept||area||'Salesfloor')}`);
+    const coins = 10 + Math.floor(Math.random()*6) + foe.lv*2; player.coins = (player.coins||0) + coins; updateCoinsHUD(); toast.textContent = `Earned ¢${coins}`; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),1200);
+
+    // Always at least one level-up per resolved incident
+    levelUp(you);
+
+    // Apply XP and additional level-ups if thresholds are crossed
+    you.xp += xp;
+    let need = 30 + you.lv * 10;
+    while (you.xp >= need) {
+      you.xp -= need;
+      levelUp(you);
+      need = 30 + you.lv * 10;
+    }
+
+    setTimeout(()=>{ showBattle(false); save(); }, 900);
+  }
+
+  function levelUp(target){
+    target.lv++;
+    target.hpMax += 6;
+    target.atk += 2;
+    target.def += 2;
+    target.spd += 2;
+    target.hp = target.hpMax; // fully restore on level-up
+    if(target===you){ updateBattleUI(); }
+    say(`${target.name} advanced to Lv ${target.lv}!`);
+  }
+
+  // Resolution helper: works even if you have 0 kits
+  let __resolving = false;
+  function attemptResolution(){
+    if(__resolving) return;
+    if(battleEl.style.display!=='block') return; // only during incident
+
+    const have = (player.items['Resolve Kit']||0) > 0;
+    if(have){ player.items['Resolve Kit']--; save(); }
+
+    const hpFactor = 1 - (foe.hp/foe.hpMax);
+    const base = 0.35 + hpFactor*0.45;   // base chance without kit
+    const bonus = have ? 0.25 : 0.0;     // Resolve Kit improves odds
+    const chance = Math.min(0.95, base + bonus);
+
+    say(have ? 'Using Resolve Kit… attempting peaceful resolution…' : 'Attempting verbal resolution…');
+    __resolving = true;
+    let dots = 0;
+    const t = setInterval(()=>{
+      dots = (dots+1)%4;
+      ui.textContent = (have ? 'Using Resolve Kit' : 'Talking it through') + '.'*dots;
+    }, 220);
+
+    setTimeout(()=>{
+      clearInterval(t);
+      __resolving = false;
+      if(Math.random()<chance){
+        resolveIncident('They returned items and left peacefully.');
+      }else{
+        say('Resolution failed. Reassessing…'); setTimeout(foeMove, 650);
+      }
+    }, 1200);
+  }
+
+  // Safe Bring to AP Office flow (separate from attemptResolution)
+  if(typeof window.__resolving==='undefined'){ window.__resolving=false; }
+  function bringToAP(){
+    if(window.__resolving) return;
+    if(battleEl.style.display!=='block') return;
+    const have = (player.items['Resolve Kit']||0) > 0;
+    if(have){ player.items['Resolve Kit']--; save(); }
+    const hpFactor = 1 - (foe.hp/foe.hpMax);
+    let chance = Math.min(0.95, 0.35 + hpFactor*0.45 + (have?0.25:0) - 0.05);
+    say(have ? 'Using Resolve Kit… asking to come to AP Office…' : 'Attempting to bring to AP Office…');
+    window.__resolving = true;
+    setTimeout(function(){
+      window.__resolving = false;
+      if(Math.random() < chance){
+        const apBonus = 10 + Math.floor(foe.lv*1.5);
+        you.xp = (you.xp||0) + apBonus;
+        var toastEl = document.getElementById('toast');
+        if(toastEl){ toastEl.textContent = 'Escorted to AP Office (+'+apBonus+' XP bonus)'; toastEl.classList.add('show'); setTimeout(function(){ toastEl.classList.remove('show'); }, 1400); }
+        var lines = [
+          "Guess I have a date with paperwork.","Tell the register I’ll miss it.","Do they serve cafeteria vibes there?",
+          "Is orange a good color on me? Asking for a jumpsuit.","Brb, auditioning for ‘Law & Order: Aisle Unit’.",
+          "I hope the AP Office has comfy chairs.","So… is there a loyalty program for consequences?",
+          "I brought my best ‘I’m sorry’ face.","Can I trade these vibes for bail?","Note to self: receipts are stronger than me.",
+          "Okay, okay. I folded faster than a lawn chair.","Plot twist: I *am* the clearance item.",
+          "I’ll put ‘learning accountability’ on my resume.","Is this where the form lives? I love forms now.",
+          "Add me to the ‘paid in-full’ newsletter.","I didn’t pass Go. I didn’t collect $200.",
+          "This is my villain origin story… of paying.","I hear the AP Office has great lighting.",
+          "I solemnly swear to beep next time.","Is there a gift shop? I’d like a receipt.",
+          "One ticket to Responsible Town, please.","I’m rebranding to ‘Upstanding Citizen (Beta)’.",
+          "BRB, speed-running the apology any%.","I see now: barcodes are not decorative.",
+          "Fine, I’ll guest star in ‘Lesson Learned’.","Does the AP Office validate parking… and life choices?",
+          "I’m ready for my close-up… mug? No? Too soon.","Putting the ‘rest’ in ‘arrested development’.",
+          "Please tell the shopping cart I said goodbye.","I accept my side quest: Accountability.",
+          "Adding ‘compliance’ to my skill tree.","I came, I saw, I underpaid. My bad.",
+          "New plan: receipts first, jokes later.","I’ll go peacefully. My cart, however, is feral.",
+          "Is there a playlist for this? ‘Oops, My Bad’ radio.","I hear orange is the new paid-in-full.",
+          "They said ‘price check’, not ‘life choices check’.","I’ve been defeated by the item scanner—again.",
+          "Okay fine, I’ll graduate from Sample University.","I hereby retire from competitive shoplifting.",
+          "My lawyer (a banana) advises I comply.","I was never here. Unless the cameras say otherwise.",
+          "Is there a punch card for apologies?","Fine, escort me—to wisdom.",
+          "Plot armor failed; policy armor succeeded.","Cue the tiny violin for my excuses.",
+          "This is my beep redemption arc.","Today I learned: shrink isn’t a yoga pose.",
+          "RIP to my discount, it lived briefly.","I will absolutely read the policy this time.",
+          "Consider me enrolled in Checkout 101.","I thought I could out-speed a scanner. I could not.",
+          "Goodbye, free ninety-nine. Hello, sub-total.","Let’s go. I’ll bring my indoor voice.",
+          "If I say sorry in 4K, does it count extra?","I didn’t plan this far ahead. Or at all.",
+          "This is fine. Everything is fine. (It is not.)","Surprise twist: I’m the BOGO—Buy One, Go (with you).",
+          "Achievement unlocked: Accountability.","Turns out ‘just vibes’ isn’t legal tender.",
+          "I’ll miss you, unscanned snacks.","I’ll bring the pen. For the forms. I’m helpful now.",
+          "Please don’t let the TV wall judge me.","Okay, field trip to AP Office, let’s go.",
+          "I will now contemplate my subtotal.","Catch me on my redemption tour: ‘Checkout 2: Paid Boogaloo’.",
+          "Tell the cameras I said hi and sorry."
+        ];
+        say('Agreeing to come with you. ' + lines[Math.floor(Math.random()*lines.length)]);
+        resolveIncident('They agreed to go to the AP Office.');
+      } else {
+        say('Resolution failed. Reassessing…');
+        setTimeout(foeMove, 650);
+      }
+    }, 1000);
+  }
+
+  // Interactions
+  function onEnter(){
+    const t=world[player.r][player.c];
+    if(t===T.item) return pickup(player.r,player.c);
+    if(t===T.register || isRegisterNearby()) return openShop();
+    if(t===T.pc){ return openPC(); }
+    if(t===T.door){
+      if(player.r===3 && player.c===18){ startIncident('Organized Crew','Electronics', true); }
+      else if(player.r===15 && player.c===6){ startIncident('Return Fraudster','Grocery', true); }
+      return;
+    }
+    if(t===T.ap){
+      if(!(player.badges.elec && player.badges.groc)){ ui.textContent='AP Office: requires Electronics & Grocery badges.'; return; }
+      startIncident('Organized Crew','AP Office', true); return;
+    }
+    ui.textContent='Systems nominal.';
+  }
+
+  // Module manager
+  function openPC(){
+    pcParty.innerHTML=''; pcStorage.innerHTML='';
+    player.party.forEach((m,i)=>{
+      const d=document.createElement('div'); d.className='slot'; d.textContent=`${m.name} Lv${m.lv}`;
+      d.onclick=()=>{ if(player.party.length>1){ player.storage.push(m); player.party.splice(i,1); openPC(); save(); } };
+      pcParty.appendChild(d);
+    });
+    player.storage.forEach((m,i)=>{
+      const d=document.createElement('div'); d.className='slot'; d.textContent=`${m.name} Lv${m.lv}`;
+      d.onclick=()=>{ if(player.party.length<6){ player.party.push(m); player.storage.splice(i,1); openPC(); save(); } };
+      pcStorage.appendChild(d);
+    });
+    pcModal.classList.add('show');
+  }
+  pcClose.onclick=()=> pcModal.classList.remove('show');
+
+  // Hook: ensure the Resolve tab is renamed and bound
+  (function(){
+    const btn = document.getElementById('tabRecruit');
+    if(btn){ btn.textContent = 'Bring to AP Office'; btn.onclick = bringToAP; }
+  })();
+
+  // Shop
+  const shopModal=$('shopModal'), shopClose=$('shopClose'), shopList=$('shopList');
+  const SHOP_STOCK=[
+    {id:'Battery Pack', desc:'Restore 25 HP.', price:25},
+    {id:'Energy Drink', desc:'Restore 10 PP to all moves.', price:30},
+    {id:'Resolve Kit', desc:'Attempt peaceful resolution.', price:40}
+  ];
+  function openShop(){
+    shopList.innerHTML='';
+    SHOP_STOCK.forEach(item=>{
+      const d=document.createElement('div'); d.className='slot'; d.textContent=`${item.id} — ¢${item.price}`;
+      d.title=item.desc;
+      d.onclick=()=>{
+        if((player.coins||0)<item.price){ ui.textContent='Not enough coins.'; return; }
+        player.coins-=item.price; player.items[item.id]=(player.items[item.id]||0)+1; save(); updateCoinsHUD(); openShop();
+        toast.textContent=`Bought ${item.id}`; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),1200);
+      };
+      shopList.appendChild(d);
+    });
+    updateCoinsHUD(); shopModal.classList.add('show');
+  }
+  shopClose.onclick=()=> shopModal.classList.remove('show');
+
+  // Menu (Start) modal
+  const menuModal=$('menuModal'), menuBtn=$('menuBtn'), menuClose=$('menuClose'), menuInv=$('menuInv');
+  function renderMenuInv(){
+    menuInv.innerHTML='';
+    const usable=['Battery Pack','Energy Drink'];
+    usable.forEach(name=>{
+      const count=player.items[name]||0;
+      const d=document.createElement('div'); d.className='slot'; d.textContent=`${name} (${count})`;
+      d.onclick=()=>{
+        if(count<=0){ ui.textContent=`No ${name} left.`; return; }
+        if(name==='Battery Pack'){ const heal=Math.min(25,you.hpMax-you.hp); you.hp+=heal; updateHP(); say(`Used Battery Pack. Restored ${heal} HP.`); }
+        if(name==='Energy Drink'){ you.moves.forEach(m=>{ const max=(MOVESET[m.name]&&MOVESET[m.name].pp)||20; m.pp=Math.min(max,(m.pp||max)+10); }); say('Used Energy Drink. PP restored!'); }
+        player.items[name]--; save(); renderMenuInv();
+      };
+      menuInv.appendChild(d);
+    });
+  }
+  function openMenu(){ renderMenuInv(); updateCoinsHUD(); menuModal.classList.add('show'); }
+  menuBtn.onclick=openMenu; menuClose.onclick=()=> menuModal.classList.remove('show');
+
+
+  // Input
+  function handleKey(e){
+    if(battleEl.style.display==='block'){
+      if(e.key==='Enter'){ if(partyEl.style.display==='grid'){ const node=[...partyEl.children].find(n=>!n.classList.contains('dead')); if(node) node.click(); } else if(itemsEl.style.display==='grid'){ const it=itemsEl.querySelector('.move'); if(it) it.click(); } else { const mv=movesEl.querySelector('.move'); if(mv) mv.click(); } return; }
+      if(e.key.toLowerCase()==='f'){ tabFight.click(); return; }
+      if(e.key.toLowerCase()==='t'){ tabBag.click(); return; }
+      if(e.key.toLowerCase()==='m'){ tabParty.click(); return; }
+      return;
+    }
+    if(e.key==='Enter'){ onEnter(); return; }
+    if(['ArrowUp','w','W'].includes(e.key)) { lastDir='up'; return moveOnce('up'); }
+    if(['ArrowDown','s','S'].includes(e.key)) { lastDir='down'; return moveOnce('down'); }
+    if(['ArrowLeft','a','A'].includes(e.key)) { lastDir='left'; return moveOnce('left'); }
+    if(['ArrowRight','d','D'].includes(e.key)) { lastDir='right'; return moveOnce('right'); }
+  }
+  window.addEventListener('keydown', handleKey);
+  // D-Pad
+  let timer=null; function moveOnce(dir){ if(battleEl.style.display==='block') return; if(dir==='up') tryMove(-1,0); if(dir==='down') tryMove(1,0); if(dir==='left') tryMove(0,-1); if(dir==='right') tryMove(0,1); }
+  function startHold(dir){ lastDir=dir; moveOnce(dir); stopHold(); timer=setInterval(()=>{ lastDir=dir; moveOnce(dir); },140); }
+  function stopHold(){ if(timer){ clearInterval(timer); timer=null; } }
+  pad.querySelectorAll('.k[data-dir]').forEach(k=>{ const dir=k.dataset.dir; ['pointerdown','touchstart','mousedown'].forEach(ev=>k.addEventListener(ev,(e)=>{ e.preventDefault(); startHold(dir); })); ['pointerup','pointerleave','touchend','mouseup','touchcancel'].forEach(ev=>k.addEventListener(ev, stopHold)); });
+  btnA.addEventListener('pointerdown',(e)=>{ e.preventDefault(); if(battleEl.style.display==='block'){ const mv=movesEl.querySelector('.move'); if(mv && movesEl.style.display==='grid') mv.click(); else if(itemsEl.style.display==='grid'){ const it=itemsEl.querySelector('.move'); if(it) it.click(); } else if(partyEl.style.display==='grid'){ const node=[...partyEl.children].find(n=>!n.classList.contains('dead')); if(node) node.click(); } } else { onEnter(); } });
+  btnB.addEventListener('pointerdown',(e)=>{ e.preventDefault(); if(battleEl.style.display==='block'){ showBattle(false); } });
+
+  // Start + boot
+  startBtn.onclick=()=>{ startOverlay.style.display='none'; applyControlsVisibility(); };
+  helpBtn.onclick=()=>{ toast.textContent='Move: Arrows/WASD • Enter interact • Menu = use items • Stand NEXT TO a register then press Enter to shop • PC = Module Manager • Types: Vision>Organized, POS>Return, RFID>Organized, Audit>Casual'; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),3200); };
+  saveBtn.onclick=()=>{ save(); updateCoinsHUD(); }; const audioPref=localStorage.getItem('store_api_v11_audio'); setAudio(audioPref==='1');
+
+  load(); ensureStarter(); drawMap(); updateCoinsHUD(); applyControlsVisibility(); ui.textContent='Press Start to begin.';
+})();
+</script>
+</body>
+</html>
